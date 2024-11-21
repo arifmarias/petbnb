@@ -1,3 +1,4 @@
+# alembic/env.py
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
@@ -28,9 +29,14 @@ config.set_main_option("sqlalchemy.url", database_url)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Import models
-from app.models import User
+# Import all models
+from app.models.user import User
+from app.models.pet import Pet
+from app.models.caregiver import CaregiverProfile
+from app.models.booking import Booking
+from app.models.review import Review
 from app.core.database import Base
+
 target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:
@@ -46,7 +52,6 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 def run_migrations_online() -> None:
-    # Use the same URL throughout the process
     configuration = config.get_section(config.config_ini_section)
     configuration["sqlalchemy.url"] = database_url
     

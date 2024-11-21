@@ -1,8 +1,16 @@
-from sqlalchemy import Boolean, Column, String, DateTime, Text
+# app/models/user.py
+from sqlalchemy import Boolean, Column, String, DateTime, Text, Enum
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 from app.core.database import Base
 import uuid
 from datetime import datetime
+import enum
+
+class UserType(str, enum.Enum):
+    OWNER = "owner"
+    CAREGIVER = "caregiver"
+    ADMIN = "admin"
 
 class User(Base):
     __tablename__ = "users"
@@ -13,8 +21,22 @@ class User(Base):
     full_name = Column(String(255))
     phone = Column(String(50))
     address = Column(Text)
-    user_type = Column(String(20))  # 'owner' or 'caregiver'
+    user_type = Column(Enum(UserType), nullable=False)
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
+    is_admin = Column(Boolean, default=False)
+    verification_token = Column(String(255), nullable=True)
+    reset_password_token = Column(String(255), nullable=True)
+    profile_picture = Column(String(255), nullable=True)
+    last_login = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    pets = relationship("Pet", back_populates="owner", cascade="all, delete-orphan")
+    caregiver_profile = relationship("CaregiverProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    bookings_as_owner = relationship("Booking", foreign_keys="[Booking.owner_id]", back_populates="owner")
+    reviews_given = relationship("Review", foreign_keys="[Review.reviewer_id]", back_populates="reviewer")
+
+    def __repr__(self):
+        return f"<User {self.email}>"
