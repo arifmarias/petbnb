@@ -3,6 +3,7 @@ from sqlalchemy import Boolean, Column, String, DateTime, Text, Enum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+from app.models.message import chat_room_participants  # Import the association table
 import uuid
 from datetime import datetime
 import enum
@@ -32,11 +33,20 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationships
+    # Existing Relationships
     pets = relationship("Pet", back_populates="owner", cascade="all, delete-orphan")
     caregiver_profile = relationship("CaregiverProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     bookings_as_owner = relationship("Booking", foreign_keys="[Booking.owner_id]", back_populates="owner")
     reviews_given = relationship("Review", foreign_keys="[Review.reviewer_id]", back_populates="reviewer")
+    
+    # Messaging Relationships
+    messages_sent = relationship("Message", back_populates="sender")
+    message_reads = relationship("MessageReadStatus", back_populates="user")
+    chat_rooms = relationship(
+        "ChatRoom",
+        secondary=chat_room_participants,
+        back_populates="participants"
+    )
 
     def __repr__(self):
         return f"<User {self.email}>"

@@ -33,9 +33,24 @@ if config.config_file_name is not None:
 from app.models.user import User
 from app.models.pet import Pet
 from app.models.caregiver import CaregiverProfile
-from app.models.booking import Booking
+from app.models.booking import Booking, BookingStatus, ServiceType
 from app.models.review import Review
+from app.models.payment import Payment, PaymentStatus, PaymentType  # Add this line
 from app.core.database import Base
+
+# Add all models to __all__ for proper detection
+__all__ = [
+    "User",
+    "Pet",
+    "CaregiverProfile",
+    "Booking",
+    "BookingStatus",
+    "ServiceType",
+    "Review",
+    "Payment",
+    "PaymentStatus",
+    "PaymentType"
+]
 
 target_metadata = Base.metadata
 

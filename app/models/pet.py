@@ -23,7 +23,7 @@ class Pet(Base):
     pet_type = Column(Enum(PetType), nullable=False)
     breed = Column(String(100))
     age = Column(Integer)
-    size = Column(String(50))  # Small, Medium, Large
+    size = Column(String(50))
     weight = Column(Float)
     gender = Column(String(20))
     is_neutered = Column(Boolean, default=False)

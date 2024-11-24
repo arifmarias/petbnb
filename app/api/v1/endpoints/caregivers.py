@@ -7,7 +7,9 @@ from app.schemas import caregiver as caregiver_schemas
 from app.models.user import User, UserType
 from app.models.caregiver import CaregiverProfile
 from uuid import UUID
-from sqlalchemy import or_
+from sqlalchemy import cast, String, or_
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.orm import joinedload
 
 router = APIRouter()
 
@@ -58,12 +60,17 @@ async def search_caregivers(
     """
     Search for caregivers with filters.
     """
-    query = db.query(CaregiverProfile).filter(CaregiverProfile.is_available == True)
+    query = db.query(CaregiverProfile).options(joinedload(CaregiverProfile.user))
+    query = query.filter(CaregiverProfile.is_available == True)
     
     if service_type:
-        query = query.filter(CaregiverProfile.services_offered.contains([service_type]))
+        query = query.filter(
+            CaregiverProfile.services_offered.any(cast(service_type, String))
+        )
     if pet_type:
-        query = query.filter(CaregiverProfile.accepted_pet_types.contains([pet_type]))
+        query = query.filter(
+            CaregiverProfile.accepted_pet_types.any(cast(pet_type, String))
+        )
     if max_price:
         query = query.filter(or_(
             CaregiverProfile.price_per_night <= max_price,
@@ -71,9 +78,11 @@ async def search_caregivers(
             CaregiverProfile.price_per_walk <= max_price
         ))
     if pet_size:
-        query = query.filter(CaregiverProfile.preferred_pet_size.contains([pet_size]))
+        query = query.filter(
+            CaregiverProfile.preferred_pet_size.any(cast(pet_size, String))
+        )
     if location:
-        # Implement location-based search when you add geocoding
+        # For future implementation with geocoding
         pass
     
     caregivers = query.offset(skip).limit(limit).all()

@@ -7,8 +7,8 @@ from uuid import UUID
 class CaregiverProfileBase(BaseModel):
     bio: Optional[str] = None
     years_of_experience: Optional[int] = Field(None, ge=0)
-    services_offered: List[str] = []  # ['boarding', 'walking', 'daycare']
-    accepted_pet_types: List[str] = []  # ['dog', 'cat', etc.]
+    services_offered: List[str] = []
+    accepted_pet_types: List[str] = []
     price_per_night: Optional[float] = Field(None, gt=0)
     price_per_walk: Optional[float] = Field(None, gt=0)
     price_per_day: Optional[float] = Field(None, gt=0)
@@ -19,7 +19,7 @@ class CaregiverProfileBase(BaseModel):
     has_fenced_yard: bool = False
     living_space_size: Optional[int] = Field(None, gt=0)
     emergency_transport: bool = False
-    preferred_pet_size: List[str] = []  # ['small', 'medium', 'large']
+    preferred_pet_size: List[str] = []
 
 class CaregiverProfileCreate(CaregiverProfileBase):
     pass
@@ -45,7 +45,7 @@ class CaregiverPublicProfile(CaregiverProfileBase):
     total_reviews: int
     is_available: bool
     user_full_name: str
-    user_profile_picture: Optional[str]
+    user_profile_picture: Optional[str] = None
 
     class Config:
         from_attributes = True

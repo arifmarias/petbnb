@@ -1,5 +1,5 @@
 # app/api/v1/endpoints/auth.py
-from datetime import timedelta
+from datetime import timedelta, datetime
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from fastapi.security import OAuth2PasswordRequestForm
@@ -43,9 +43,9 @@ async def register_user(
     db.commit()
     db.refresh(user)
     
-    # Generate verification token
+    # Generate verification token - use user.id (UUID) instead of email
     token = security.create_access_token(
-        {"sub": user.email, "type": "verification"},
+        {"sub": str(user.id), "type": "verification", "email": user.email},
         expires_delta=timedelta(hours=settings.VERIFY_TOKEN_EXPIRE_HOURS)
     )
     user.verification_token = token
@@ -84,9 +84,15 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Update last login
+    user.last_login = datetime.utcnow()
+    db.commit()
+
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    # Use UUID instead of email for token
     access_token = security.create_access_token(
-        {"sub": user.email}, expires_delta=access_token_expires
+        {"sub": str(user.id), "email": user.email},
+        expires_delta=access_token_expires
     )
     return {
         "access_token": access_token,
@@ -101,15 +107,16 @@ def verify_email(
     """Verify user email."""
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        email = payload.get("sub")
-        if not email or payload.get("type") != "verification":
+        user_id = payload.get("sub")
+        email = payload.get("email")
+        if not user_id or payload.get("type") != "verification":
             raise HTTPException(status_code=400, detail="Invalid token")
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=400, detail="Verification link has expired")
     except jwt.JWTError:
         raise HTTPException(status_code=400, detail="Invalid token")
     
-    user = db.query(User).filter(User.email == email).first()
+    user = db.query(User).filter(User.id == user_id, User.email == email).first()
     if not user or user.is_verified:
         raise HTTPException(status_code=400, detail="Invalid token or email already verified")
     
@@ -130,9 +137,9 @@ async def forgot_password(
         # For security reasons, don't reveal if email exists
         return {"message": "If a user with this email exists, they will receive a password reset link."}
     
-    # Generate reset token
+    # Generate reset token using UUID
     token = security.create_access_token(
-        {"sub": user.email, "type": "reset"},
+        {"sub": str(user.id), "type": "reset", "email": user.email},
         expires_delta=timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES)
     )
     user.reset_password_token = token
@@ -152,15 +159,16 @@ def reset_password(
     """Reset password."""
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        email = payload.get("sub")
-        if not email or payload.get("type") != "reset":
+        user_id = payload.get("sub")
+        email = payload.get("email")
+        if not user_id or payload.get("type") != "reset":
             raise HTTPException(status_code=400, detail="Invalid token")
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=400, detail="Reset link has expired")
     except jwt.JWTError:
         raise HTTPException(status_code=400, detail="Invalid token")
     
-    user = db.query(User).filter(User.email == email).first()
+    user = db.query(User).filter(User.id == user_id, User.email == email).first()
     if not user or user.reset_password_token != token:
         raise HTTPException(status_code=400, detail="Invalid token")
     
@@ -219,8 +227,6 @@ def list_users(
     users = db.query(User).offset(skip).limit(limit).all()
     return users
 
-# Additional helper endpoints
-
 @router.post("/resend-verification")
 async def resend_verification_email(
     email: str = Body(..., embed=True),
@@ -232,9 +238,9 @@ async def resend_verification_email(
         # Don't reveal if user exists or is already verified
         return {"message": "If a user with this email exists and is not verified, they will receive a verification email."}
     
-    # Generate new verification token
+    # Generate new verification token using UUID
     token = security.create_access_token(
-        {"sub": user.email, "type": "verification"},
+        {"sub": str(user.id), "type": "verification", "email": user.email},
         expires_delta=timedelta(hours=settings.VERIFY_TOKEN_EXPIRE_HOURS)
     )
     user.verification_token = token

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PetBnB Chat Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #messages {
+            height: 400px;
+            overflow-y: scroll;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background-color: #fff;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 4px;
+            word-wrap: break-word;
+        }
+        .sent {
+            background-color: #e3f2fd;
+            margin-left: 20%;
+            color: #1565c0;
+        }
+        .received {
+            background-color: #f5f5f5;
+            margin-right: 20%;
+            color: #2e7d32;
+        }
+        .system {
+            background-color: #fff3e0;
+            text-align: center;
+            color: #f57c00;
+        }
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .debug {
+            font-family: monospace;
+            font-size: 12px;
+            color: #666;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #2196f3;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #1976d2;
+        }
+        button:disabled {
+            background-color: #bdbdbd;
+            cursor: not-allowed;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>PetBnB Chat Test</h2>
+        
+        <div class="input-group">
+            <label>JWT Token (without "Bearer "):</label>
+            <input type="text" id="token" placeholder="Paste your JWT token here">
+        </div>
+        
+        <div class="input-group">
+            <label>Chat Room ID:</label>
+            <input type="text" id="chatRoomId" placeholder="Chat room UUID">
+        </div>
+        
+        <div class="input-group">
+            <button onclick="connect()">Connect</button>
+            <button onclick="disconnect()" disabled id="disconnectBtn">Disconnect</button>
+        </div>
+
+        <div id="messages"></div>
+
+        <div class="input-group" style="display: flex; gap: 10px;">
+            <input type="text" id="messageInput" 
+                placeholder="Type your message..." 
+                disabled
+                onkeypress="if(event.key === 'Enter') sendMessage()">
+            <button onclick="sendMessage()" disabled id="sendBtn">Send</button>
+        </div>
+
+        <div id="debug" class="debug"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        let reconnectAttempts = 0;
+        const MAX_RECONNECT_ATTEMPTS = 3;
+
+        function log(message) {
+            const debug = document.getElementById('debug');
+            const time = new Date().toISOString();
+            debug.innerHTML += `<div>[${time}] ${message}</div>`;
+            debug.scrollTop = debug.scrollHeight;
+        }
+
+        async function connect() {
+            const token = document.getElementById('token').value.trim();
+            const chatRoomId = document.getElementById('chatRoomId').value.trim();
+            
+            if (!token || !chatRoomId) {
+                addMessage('Please enter both token and chat room ID', 'error');
+                return;
+            }
+
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+
+            try {
+                // Pass token as query parameter
+                const wsUrl = `ws://localhost:8000/api/v1/messages/ws/${chatRoomId}?token=${encodeURIComponent(token)}`;
+                log(`Connecting to ${wsUrl}`);
+
+                ws = new WebSocket(wsUrl);
+                
+                const connectionTimeout = setTimeout(() => {
+                    if (ws.readyState !== WebSocket.OPEN) {
+                        log('Connection timeout');
+                        ws.close();
+                    }
+                }, 5000);
+
+                ws.onopen = () => {
+                    clearTimeout(connectionTimeout);
+                    log('WebSocket connected');
+                    enableInterface(true);
+                    addMessage('Connected to chat room', 'system');
+                    reconnectAttempts = 0;
+                };
+
+                ws.onclose = (event) => {
+                    log(`WebSocket closed with code: ${event.code}, reason: ${event.reason}`);
+                    enableInterface(false);
+                    addMessage(`Disconnected (Code: ${event.code})`, 'system');
+                    
+                    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                        reconnectAttempts++;
+                        log(`Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+                        setTimeout(connect, 2000);
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    log(`WebSocket error: ${error.message || 'Unknown error'}`);
+                    addMessage('Connection error', 'error');
+                };
+
+                ws.onmessage = (event) => {
+                    log(`Received: ${event.data}`);
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleMessage(data);
+                    } catch (e) {
+                        log(`Error parsing message: ${e.message}`);
+                    }
+                };
+
+            } catch (e) {
+                log(`Connection error: ${e.message}`);
+                addMessage(`Connection error: ${e.message}`, 'error');
+            }
+        }
+
+        function handleMessage(data) {
+            if (data.type === 'error') {
+                addMessage(`Error: ${data.message}`, 'error');
+            } else if (data.type === 'message_sent') {
+                const content = data.message?.content || data.content;
+                addMessage(content, 'sent');
+            } else if (data.type === 'new_message') {
+                const content = data.message?.content || data.content;
+                addMessage(content, 'received');
+            } else {
+                addMessage(JSON.stringify(data), 'system');
+            }
+        }
+
+        function enableInterface(enabled) {
+            document.getElementById('messageInput').disabled = !enabled;
+            document.getElementById('sendBtn').disabled = !enabled;
+            document.getElementById('disconnectBtn').disabled = !enabled;
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close(1000, 'User disconnected');
+                ws = null;
+            }
+            enableInterface(false);
+        }
+
+        function sendMessage() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                addMessage('Not connected', 'error');
+                return;
+            }
+            
+            const input = document.getElementById('messageInput');
+            const content = input.value.trim();
+            
+            if (!content) return;
+            
+            const message = {
+                content: content,
+                is_system_message: false
+            };
+            
+            try {
+                ws.send(JSON.stringify(message));
+                input.value = '';
+                log(`Sent: ${JSON.stringify(message)}`);
+            } catch (e) {
+                log(`Error sending message: ${e.message}`);
+                addMessage('Failed to send message', 'error');
+            }
+        }
+
+        function addMessage(text, type) {
+            const messages = document.getElementById('messages');
+            const div = document.createElement('div');
+            div.textContent = text;
+            div.className = `message ${type}`;
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+    </script>
+</body>
+</html>

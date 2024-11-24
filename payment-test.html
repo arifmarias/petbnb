@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PetBnB Payment Test</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        #payment-form {
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        #card-element {
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #635bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: #cccccc;
+        }
+        #payment-status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div id="payment-form">
+        <h2>Test Payment</h2>
+        <div id="card-element"></div>
+        <button type="submit" id="submit-button">Pay Now</button>
+        <div id="payment-status"></div>
+    </div>
+
+    <script>
+        // Replace these with your actual values
+        const stripePublicKey = 'pk_test_51QNY3HGKxg04Xtb3ETzf3ZZvYNWczn7HjlXXRgFW3aThpkqRssG7d3ZQc2YlMqCgqmb0JRPEPupV3OtBULpewf7200so1YlQ5c'; // Your Stripe publishable key
+        const clientSecret = 'pi_3QOfkwGKxg04Xtb31z1thsHv_secret_rh67hwMLhR68AWYeqkxdsneGJ'; // Client secret from payment intent response
+        
+        const stripe = Stripe(stripePublicKey);
+        const elements = stripe.elements();
+        const card = elements.create('card');
+        card.mount('#card-element');
+        
+        const submitButton = document.getElementById('submit-button');
+        const statusDiv = document.getElementById('payment-status');
+        
+        submitButton.addEventListener('click', async (e) => {
+            e.preventDefault();
+            submitButton.disabled = true;
+            statusDiv.textContent = 'Processing...';
+            
+            try {
+                const {error, paymentIntent} = await stripe.confirmCardPayment(
+                    clientSecret,
+                    {
+                        payment_method: {
+                            card: card
+                        }
+                    }
+                );
+                
+                if (error) {
+                    statusDiv.textContent = error.message;
+                    statusDiv.className = 'error';
+                } else {
+                    statusDiv.textContent = `Payment successful! PaymentIntent ID: ${paymentIntent.id}`;
+                    statusDiv.className = 'success';
+                }
+            } catch (e) {
+                statusDiv.textContent = e.message;
+                statusDiv.className = 'error';
+            }
+            
+            submitButton.disabled = false;
+        });
+    </script>
+</body>
+</html>

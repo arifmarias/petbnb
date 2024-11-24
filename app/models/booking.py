@@ -8,16 +8,17 @@ from datetime import datetime
 import enum
 
 class BookingStatus(str, enum.Enum):
-    PENDING = "pending"
-    CONFIRMED = "confirmed"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
-    REJECTED = "rejected"
+    PENDING = "PENDING"
+    PAYMENT_REQUIRED = "PAYMENT_REQUIRED"
+    CONFIRMED = "CONFIRMED"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+    REJECTED = "REJECTED"
 
 class ServiceType(str, enum.Enum):
-    BOARDING = "boarding"
-    DAYCARE = "daycare"
-    WALKING = "walking"
+    BOARDING = "BOARDING"
+    DAYCARE = "DAYCARE"
+    WALKING = "WALKING"
 
 class Booking(Base):
     __tablename__ = "bookings"
@@ -35,11 +36,27 @@ class Booking(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationships
+    # Existing Relationships
     pet = relationship("Pet", back_populates="bookings")
-    owner = relationship("User", foreign_keys=[owner_id], back_populates="bookings_as_owner")
+    owner = relationship("User", foreign_keys=[owner_id])
     caregiver = relationship("CaregiverProfile", back_populates="bookings")
     review = relationship("Review", back_populates="booking", uselist=False)
+    payments = relationship("Payment", back_populates="booking", lazy="dynamic")
+    
+    # New Relationship for Chat
+    chat_room = relationship("ChatRoom", back_populates="booking", uselist=False)
+
+    @property
+    def pet_name(self) -> str:
+        return self.pet.name if self.pet else ""
+
+    @property
+    def owner_name(self) -> str:
+        return self.owner.full_name if self.owner else ""
+
+    @property
+    def caregiver_name(self) -> str:
+        return self.caregiver.user.full_name if self.caregiver and self.caregiver.user else ""
 
     def __repr__(self):
         return f"<Booking {self.id}>"
