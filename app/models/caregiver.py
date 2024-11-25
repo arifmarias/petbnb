@@ -4,6 +4,7 @@ from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import relationship, column_property
 from sqlalchemy.ext.hybrid import hybrid_property
 from app.core.database import Base
+from app.models.image import Image
 from typing import Optional, List
 import uuid
 from datetime import datetime
@@ -38,6 +39,13 @@ class CaregiverProfile(Base):
     user = relationship("User", back_populates="caregiver_profile")
     bookings = relationship("Booking", back_populates="caregiver")
     reviews = relationship("Review", back_populates="caregiver")
+    images = relationship(
+            "Image",
+            primaryjoin="and_(CaregiverProfile.id==Image.entity_id, Image.entity_type=='caregiver')",
+            cascade="all, delete-orphan",
+            foreign_keys=[Image.entity_id],
+            back_populates="caregiver"
+        )
 
     @property
     def user_full_name(self) -> str:

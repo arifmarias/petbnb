@@ -59,6 +59,17 @@ class Settings(BaseSettings):
     MAX_MESSAGE_LENGTH: int = 2000
     MESSAGE_RETENTION_DAYS: int = 90
     ALLOWED_CONTACT_SHARING_STATUSES: List[str] = ["CONFIRMED", "COMPLETED"]
+    
+    # Cloudinary Settings
+    CLOUDINARY_CLOUD_NAME: Optional[str] = None
+    CLOUDINARY_API_KEY: Optional[str] = None
+    CLOUDINARY_API_SECRET: Optional[str] = None
+    
+    # Image Settings
+    MAX_IMAGE_SIZE: int = 5 * 1024 * 1024  # 5MB
+    ALLOWED_IMAGE_TYPES: List[str] = ["image/jpeg", "image/png", "image/gif"]
+    MAX_IMAGES_PER_PET: int = 5
+    MAX_IMAGES_PER_CAREGIVER: int = 10
 
     class Config:
         case_sensitive = True

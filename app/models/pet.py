@@ -3,6 +3,7 @@ from sqlalchemy import Column, String, Integer, Float, Text, ForeignKey, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+from app.models.image import Image  # Add this import
 import uuid
 from datetime import datetime
 import enum
@@ -36,6 +37,13 @@ class Pet(Base):
     # Relationships
     owner = relationship("User", back_populates="pets")
     bookings = relationship("Booking", back_populates="pet")
+    images = relationship(
+        "Image",
+        primaryjoin="and_(Pet.id==Image.entity_id, Image.entity_type=='pet')",
+        cascade="all, delete-orphan",
+        foreign_keys=[Image.entity_id],
+        back_populates="pet"
+    )
 
     def __repr__(self):
         return f"<Pet {self.name} ({self.pet_type})>"
