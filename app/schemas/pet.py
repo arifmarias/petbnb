@@ -1,9 +1,10 @@
 # app/schemas/pet.py
-from pydantic import BaseModel, constr
-from typing import Optional
+from pydantic import BaseModel
+from typing import Optional, List
 from datetime import datetime
 from uuid import UUID
 from enum import Enum
+from .user import UserInDBBase  # Changed from UserBasic to UserInDBBase
 
 class PetType(str, Enum):
     DOG = "dog"
@@ -11,6 +12,10 @@ class PetType(str, Enum):
     BIRD = "bird"
     FISH = "fish"
     OTHER = "other"
+
+class PetImageBase(BaseModel):
+    url: str
+    order: int = 0
 
 class PetBase(BaseModel):
     name: str
@@ -32,11 +37,37 @@ class PetUpdate(PetBase):
     name: Optional[str] = None
     pet_type: Optional[PetType] = None
 
+class PetImage(PetImageBase):
+    id: UUID
+    thumbnail_url: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class Pet(PetBase):
     id: UUID
     owner_id: UUID
     created_at: datetime
     updated_at: datetime
+    images: List[PetImage] = []
+    image_urls: List[str] = []
+    primary_image: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class PetWithOwner(Pet):
+    owner: UserInDBBase  # Changed from UserBasic to UserInDBBase
+
+    class Config:
+        from_attributes = True
+
+class PetBasic(BaseModel):
+    id: UUID
+    name: str
+    pet_type: PetType
+    primary_image: Optional[str] = None
 
     class Config:
         from_attributes = True

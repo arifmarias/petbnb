@@ -3,10 +3,10 @@ from sqlalchemy import Column, String, Integer, Float, Text, ForeignKey, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.core.database import Base
-from app.models.image import Image  # Add this import
 import uuid
 from datetime import datetime
 import enum
+from typing import List
 
 class PetType(str, enum.Enum):
     DOG = "dog"
@@ -40,10 +40,21 @@ class Pet(Base):
     images = relationship(
         "Image",
         primaryjoin="and_(Pet.id==Image.entity_id, Image.entity_type=='pet')",
-        cascade="all, delete-orphan",
-        foreign_keys=[Image.entity_id],
-        back_populates="pet"
+        back_populates="pet",
+        foreign_keys="[Image.entity_id]",
+        cascade="all, delete-orphan",  # Added cascade delete
+        order_by="Image.order"  # Added ordering
     )
 
     def __repr__(self):
         return f"<Pet {self.name} ({self.pet_type})>"
+
+    @property
+    def image_urls(self) -> List[str]:
+        """Get list of image URLs ordered by their order field"""
+        return [img.url for img in sorted(self.images, key=lambda x: x.order)]
+
+    @property
+    def primary_image(self) -> str:
+        """Get the primary (first) image URL or None"""
+        return self.images[0].url if self.images else None

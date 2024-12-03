@@ -60,6 +60,9 @@ async def get_current_user(
     db: Session = Depends(get_db)
 ) -> User:
     """Get current user from token."""
+    logger.info("=== Token Validation Start ===")
+    logger.info(f"Raw token received: {token[:20]}...")  # Log only first 20 chars for security
+    
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -67,32 +70,47 @@ async def get_current_user(
     )
     
     try:
-        # Decode token
+        # Clean token if needed
+        token = token.strip()
+        if token.startswith('Bearer '):
+            token = token[7:]
+        
+        logger.info("Attempting to decode token")
         is_valid, payload, error = decode_jwt_token(token)
+        
         if not is_valid:
             logger.error(f"Token validation failed: {error}")
             raise credentials_exception
 
+        logger.info("Token decoded successfully")
         user_id = payload.get("sub")
         if not user_id:
+            logger.error("No user_id in token payload")
             raise credentials_exception
 
         # Try to get user by UUID first
         try:
+            logger.info(f"Looking up user with ID: {user_id}")
             uuid_user_id = UUID(user_id)
             user = db.query(User).filter(User.id == uuid_user_id).first()
             if user:
+                logger.info(f"User found: {user.email}")
                 return user
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as e:
+            logger.error(f"UUID conversion failed: {str(e)}")
             # If UUID conversion fails, try email (backward compatibility)
             user = db.query(User).filter(User.email == user_id).first()
             if user:
+                logger.info(f"User found by email: {user.email}")
                 return user
 
+        logger.error("User not found in database")
         raise credentials_exception
     except Exception as e:
         logger.error(f"Authentication error: {str(e)}")
         raise credentials_exception
+    finally:
+        logger.info("=== Token Validation End ===")
 
 async def get_current_active_user(
     current_user: User = Depends(get_current_user)

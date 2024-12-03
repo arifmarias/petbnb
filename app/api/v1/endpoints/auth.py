@@ -12,6 +12,7 @@ from app.models.user import User
 from app.core.security import get_password_hash, verify_password
 from app.utils import email as email_utils
 import jwt
+from jwt.exceptions import PyJWTError
 
 router = APIRouter()
 
@@ -113,12 +114,15 @@ def verify_email(
             raise HTTPException(status_code=400, detail="Invalid token")
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=400, detail="Verification link has expired")
-    except jwt.JWTError:
+    except PyJWTError:  # Changed from jwt.JWTError to PyJWTError
         raise HTTPException(status_code=400, detail="Invalid token")
     
     user = db.query(User).filter(User.id == user_id, User.email == email).first()
-    if not user or user.is_verified:
-        raise HTTPException(status_code=400, detail="Invalid token or email already verified")
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid token or user not found")
+    
+    if user.is_verified:
+        raise HTTPException(status_code=400, detail="Email already verified")
     
     user.is_verified = True
     user.verification_token = None

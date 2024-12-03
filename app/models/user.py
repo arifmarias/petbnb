@@ -47,6 +47,12 @@ class User(Base):
         secondary=chat_room_participants,
         back_populates="participants"
     )
+    images = relationship(
+    "Image",
+    primaryjoin="and_(User.id==Image.entity_id, Image.entity_type=='user')",
+    back_populates="user",
+    foreign_keys="[Image.entity_id]"
+    )
 
     def __repr__(self):
         return f"<User {self.email}>"

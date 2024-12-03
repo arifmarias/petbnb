@@ -1,5 +1,6 @@
 # app/models/__init__.py
 from app.models.user import User
+from app.models.image import Image  # Add this import
 from app.models.pet import Pet
 from app.models.caregiver import CaregiverProfile
 from app.models.booking import Booking, BookingStatus, ServiceType
@@ -15,6 +16,7 @@ from app.models.message import (
 # This helps prevent circular imports
 __all__ = [
     "User",
+    "Image",  # Add this
     "Pet",
     "CaregiverProfile",
     "Booking",

@@ -25,6 +25,7 @@ class UserInDBBase(UserBase):
     is_active: bool
     is_verified: bool
     is_admin: bool
+    profile_picture: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
